@@ -63,7 +63,7 @@ public class ApiBotService
         await PostAsync(client, "http://www.js-leader.cn:48080/admin-api/cost/report_work/create", new
         {
             projectId = getProject.Item1,
-            taskName = getProject.Item2,// 任务名称
+            taskId = getProject.Item2,// id 不传可能不会显示任务名称
             typeId = 1563,// 软件调试
             reportUser = _account.UserId,
             reportType = 10,// 10: 正常报工
@@ -142,9 +142,9 @@ public class ApiBotService
         }
 
         var firstProjectId = list[0].GetProperty("projectId").GetInt32();
-        var taskName = list[0].GetProperty("taskName").GetString() ?? "";
-        Console.WriteLine($"[{_account.Username}] 获取第一个项目 ID：{firstProjectId},任务：{taskName}");
-        return new Tuple<int, string>(firstProjectId, taskName);
+        var id = list[0].GetProperty("id").GetString() ?? "";
+        Console.WriteLine($"[{_account.Username}] 获取第一个项目ID：{firstProjectId},任务ID：{id}");
+        return new Tuple<int, string>(firstProjectId, id);
     }
 
     private async Task GetAsync(HttpClient client, string url)
