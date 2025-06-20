@@ -38,7 +38,7 @@ public class ApiBotService
             Console.WriteLine($"[{_account.Username}] 今天已经报过工了，跳过本次报工");
             return;
         }
-        // 获取项目列表，提取第一个项目ID
+        // 获取项目列表，提取其中一个项目ID
         var getProject = await GetProjectIdAsync(client);
         if (getProject == null)
         {
@@ -123,7 +123,8 @@ public class ApiBotService
 
         return Math.Abs(diff.TotalMinutes) <= minutesThreshold;
     }
-    private async Task<Tuple<int, string>?> GetProjectIdAsync(HttpClient client)
+    Random _random = new Random();
+    private async Task<Tuple<int, long>?> GetProjectIdAsync(HttpClient client)
     {
         var url = "http://www.js-leader.cn:48080/admin-api/project/task/my-order?pageSize=10&pageNo=1&isFirst=1&type=1";
         var response = await client.GetAsync(url);
@@ -140,11 +141,12 @@ public class ApiBotService
             Console.WriteLine($"[{_account.Username}] 未获取到任何项目ID，list为空。");
             return null;
         }
-
-        var firstProjectId = list[0].GetProperty("projectId").GetInt32();
-        var id = list[0].GetProperty("id").GetString() ?? "";
+        //随机获取其中一个项目ID和任务ID
+        int randomIndex = _random.Next(0, list.GetArrayLength());
+        var firstProjectId = list[randomIndex].GetProperty("projectId").GetInt32();
+        var id = list[randomIndex].GetProperty("id").GetInt64();
         Console.WriteLine($"[{_account.Username}] 获取第一个项目ID：{firstProjectId},任务ID：{id}");
-        return new Tuple<int, string>(firstProjectId, id);
+        return new Tuple<int, long>(firstProjectId, id);
     }
 
     private async Task GetAsync(HttpClient client, string url)

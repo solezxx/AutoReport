@@ -23,7 +23,7 @@ public static class WecomNotifier
 
         Console.WriteLine($"企业微信发送状态: {response.StatusCode}");
     }
-    public static async Task SendToWeCom(string content, string userId = null)
+    public static async Task SendToWeCom(string content, string userId = null, bool atAll = false)
     {
         using var httpClient = new HttpClient();
         var message = new
@@ -31,12 +31,14 @@ public static class WecomNotifier
             msgtype = "text",
             text = new
             {
-                content = userId == null ? content : $"{content} <@{userId}>",
-                //mentioned_list = userId == null ? new string[] { } : new[] { userId }
+                content = atAll ? $"{content}" : (userId == null ? content : $"{content} <@{userId}>"),
+                mentioned_list = atAll ? new[]{"@all"}:Array.Empty<string>()
             }
         };
         var json = JsonSerializer.Serialize(message);
-        var response = await httpClient.PostAsync("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=609ec019-5965-45e2-bd33-766a0db3b00c", new StringContent(json, Encoding.UTF8, "application/json"));
+        var response = await httpClient.PostAsync(
+            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=609ec019-5965-45e2-bd33-766a0db3b00c",
+            new StringContent(json, Encoding.UTF8, "application/json"));
         Console.WriteLine($"企业微信发送状态: {response.StatusCode}");
     }
 }
