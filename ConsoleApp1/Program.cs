@@ -8,7 +8,7 @@ class Program
     static Timer _timer;
     static List<TimeSpan> _runTimes = new List<TimeSpan>
     {
-        new TimeSpan(17, 30, 0), // 18:00
+        new TimeSpan(17, 25, 0), // 18:00
         new TimeSpan(20, 0, 0)  // 20:00
     };
 
@@ -41,6 +41,7 @@ class Program
         var dueTime = next.Value - now;
         _timer = new Timer(async _ => await RunTask(), null, dueTime, Timeout.InfiniteTimeSpan);
         Console.WriteLine($"下次执行时间: {next}");
+        WecomNotifier.SendToWeCom($"下次执行报工时间: {next}").Wait();
     }
 
     static async Task RunTask()
