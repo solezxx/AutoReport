@@ -10,6 +10,7 @@ using System.Text.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading.Tasks;
+using ConsoleApp1;
 
 public class ApiBotService
 {
@@ -46,37 +47,37 @@ public class ApiBotService
             return;
         }
 
-        // 报工必要请求
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/system/user/get?id={_account.UserId}");
-
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/dept-type-link/list-report?deptId={_account.DeptId}");
-
         // 进入报工页面
         await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/project/manager/get?id={getProject.Item1}&isTemplate=1");
-
-        // 选择任务事项为“软件调试”
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/getDetail?projectId={getProject.Item1}&typeId=1563");
-
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=1563");
+        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=0");
 
         // 提交工时为8小时
-        await PostAsync(client, "http://www.js-leader.cn:48080/admin-api/cost/report_work/create", new
+        await PostAsync(client, "http://www.js-leader.cn:48080/admin-api/cost/report_work/create", new ReportData()
         {
+            workReportId = null,
             reportType = "10",
             typeId = 1563, // 软件调试
-            reportHour = 0.8, // 报工8小时
-            reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            standardHours = null,
+            reportHour = 7, // 报工8小时
+            abnormalReportType = null,
+            remark = "<p><br></p>",
+            reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
+            totalHours = null,
+            responsible = "张兴鑫",
             reportUser = _account.UserId,
             creator = _account.UserId.ToString(),
-            createTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-            projectId = getProject.Item1,
-            reportStatus = 50, // 状态为已报工
+            createTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
+            projectId = getProject.Item1, // 使用获取的项目ID
+            reportedHour = 0,
+            estimateHour = 0,
+            challengeName = null,
+            challengeId = new List<long>(),
+            machineTool = null,
+            gelId = null,
+            reportStatus = 50, // 状态为50表示已完成
             taskId = getProject.Item2 // 使用获取的任务ID
         });
 
-        // 刷新记录
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?creator={_account.UserId}&pageSize=50&pageNo=1&deptId={_account.DeptId}");
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=1563");
         bool justNow = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId);
         if (justNow)
         {
