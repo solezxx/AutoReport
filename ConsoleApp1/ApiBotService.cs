@@ -62,16 +62,16 @@ public class ApiBotService
         // 提交工时为8小时
         await PostAsync(client, "http://www.js-leader.cn:48080/admin-api/cost/report_work/create", new
         {
-            projectId = getProject.Item1,
-            taskId = getProject.Item2,// id 不传可能不会显示任务名称
-            typeId = 1563,// 软件调试
+            reportType = "10",
+            typeId = 1563, // 软件调试
+            reportHour = 0.8, // 报工8小时
+            reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
             reportUser = _account.UserId,
-            reportType = 10,// 10: 正常报工
-            reportHour = 8,// 报工小时数
-            reportTime = DateTimeOffset.Now.ToUnixTimeMilliseconds(),
-            deptId = _account.DeptId,// 部门ID
-            creator = _account.UserId,// 创建人ID
-            reportStatus = 50,// 审核状态，50: 已完成
+            creator = _account.UserId.ToString(),
+            createTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            projectId = getProject.Item1,
+            reportStatus = 50, // 状态为已报工
+            taskId = getProject.Item2 // 使用获取的任务ID
         });
 
         // 刷新记录
@@ -145,7 +145,7 @@ public class ApiBotService
         int randomIndex = _random.Next(0, list.GetArrayLength());
         var firstProjectId = list[randomIndex].GetProperty("projectId").GetInt32();
         var id = list[randomIndex].GetProperty("id").GetInt64();
-        Console.WriteLine($"[{_account.Username}] 获取第一个项目ID：{firstProjectId},任务ID：{id}");
+        Console.WriteLine($"[{_account.Username}] 获取的项目ID：{firstProjectId},任务ID：{id}");
         return new Tuple<int, long>(firstProjectId, id);
     }
 
@@ -165,6 +165,7 @@ public class ApiBotService
     {
         var json = JsonSerializer.Serialize(data);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
+        Console.WriteLine(json);
         var response = await client.PostAsync(url, content);
         var result = await response.Content.ReadAsStringAsync();
         Console.WriteLine($"[{_account.Username}] POST {url} -> 状态: {response.StatusCode}");

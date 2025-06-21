@@ -56,7 +56,7 @@ class Program
             await bot.RunAsync();
         }
         Console.WriteLine("全部账号执行完毕。");
-        await WecomNotifier.SendToWeCom($"帮你们都报工了，不用谢", atAll:true);
+        await WecomNotifier.SendToWeCom($"帮你们都报工了，不用谢", atAll: true);
 
         // 重新安排下一次
         ScheduleNextRun();
