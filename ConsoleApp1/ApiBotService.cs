@@ -58,7 +58,7 @@ public class ApiBotService
             reportType = "10",
             typeId = 1563, // 软件调试
             standardHours = null,
-            reportHour = 7, // 报工8小时
+            reportHour = 8, // 报工8小时
             abnormalReportType = null,
             remark = "<p><br></p>",
             reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
