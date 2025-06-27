@@ -8,7 +8,7 @@ class Program
     static Timer _timer;
     static List<TimeSpan> _runTimes = new List<TimeSpan>
     {
-        new TimeSpan(17, 25, 0),
+        new TimeSpan(17, 20, 00),
         new TimeSpan(20, 0, 0)  // 20:00
     };
 
