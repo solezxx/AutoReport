@@ -9,7 +9,7 @@ class Program
     static List<TimeSpan> _runTimes = new List<TimeSpan>
     {
         new TimeSpan(17, 20, 00),
-        new TimeSpan(20, 0, 0)  // 20:00
+        new TimeSpan(20, 30, 0)  // 20:00
     };
 
     static void Main(string[] args)

@@ -15,6 +15,8 @@ using ConsoleApp1;
 public class ApiBotService
 {
     private readonly TokenAccount _account;
+    string Extranet = "http://www.js-leader.cn:48080";
+    string Intranet = "http://192.168.104.191:48080";
 
     public ApiBotService(TokenAccount account)
     {
@@ -28,8 +30,8 @@ public class ApiBotService
         // 设置请求头
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_account.BearerToken}");
         client.DefaultRequestHeaders.Add("tenant-id", "1");
-        client.DefaultRequestHeaders.Add("origin", "http://www.js-leader.cn:8088");
-        client.DefaultRequestHeaders.Add("referer", "http://www.js-leader.cn:8088/");
+        client.DefaultRequestHeaders.Add("origin", Intranet);
+        client.DefaultRequestHeaders.Add("referer", $"{Intranet}/");
         client.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
 
         int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
@@ -52,11 +54,11 @@ public class ApiBotService
         }
 
         // 进入报工页面
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/project/manager/get?id={getProject.Item1}&isTemplate=1");
-        await GetAsync(client, $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=0");
+        await GetAsync(client, $"{Intranet}/admin-api/project/manager/get?id={getProject.Item1}&isTemplate=1");
+        await GetAsync(client, $"{Intranet}/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=0");
 
         // 提交工时为8小时
-        await PostAsync(client, "http://www.js-leader.cn:48080/admin-api/cost/report_work/create", new ReportData()
+        await PostAsync(client, $"{Intranet}/admin-api/cost/report_work/create", new ReportData()
         {
             workReportId = null,
             reportType = "10",
@@ -102,7 +104,7 @@ public class ApiBotService
     /// <returns></returns>
     public async Task<int> CheckReportWorkJustNowAsync(HttpClient client, int deptId, int creatorUserId, int minutesThreshold = 5)
     {
-        var url = $"http://www.js-leader.cn:48080/admin-api/cost/report_work/page?pageSize=50&pageNo=1&deptId={deptId}&creator={creatorUserId}";
+        var url = $"{Intranet}/admin-api/cost/report_work/page?pageSize=50&pageNo=1&deptId={deptId}&creator={creatorUserId}";
         var response = await client.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {
@@ -144,7 +146,7 @@ public class ApiBotService
     Random _random = new Random();
     private async Task<Tuple<int, long>?> GetProjectIdAsync(HttpClient client)
     {
-        var url = "http://www.js-leader.cn:48080/admin-api/project/task/my-order?pageSize=10&pageNo=1&isFirst=1&type=1";
+        var url = $"{Intranet}/admin-api/project/task/my-order?pageSize=10&pageNo=1&isFirst=1&type=1";
         var response = await client.GetAsync(url);
         var content = await response.Content.ReadAsStringAsync();
 
