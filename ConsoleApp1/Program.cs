@@ -52,7 +52,7 @@ class Program
         ApiBotService.SendToWecomList.Add("开始报工");
         foreach (var account in accounts)
         {
-            Console.WriteLine($"开始执行账号：{account.Username}");
+            Console.WriteLine($"开始执行账号：{account.UserName}");
             var bot = new ApiBotService(account);
             await bot.RunAsync();
         }
