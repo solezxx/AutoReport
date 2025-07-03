@@ -48,15 +48,16 @@ class Program
     {
         Console.WriteLine("加载 Token 文件...");
         var accounts = TokenLoader.LoadFromFile("Tokens.json");
+        ApiBotService.SendToWecomList.Clear();
+        ApiBotService.SendToWecomList.Add("开始报工");
         foreach (var account in accounts)
         {
             Console.WriteLine($"开始执行账号：{account.Username}");
-            await WecomNotifier.SendToWeCom($"开始执行账号：{account.Username}");
             var bot = new ApiBotService(account);
             await bot.RunAsync();
         }
         Console.WriteLine("全部账号执行完毕。");
-        await WecomNotifier.SendToWeCom($"帮你们都报工了，不用谢", atAll: true);
+        await WecomNotifier.SendToWeCom(string.Join("\n", ApiBotService.SendToWecomList)+"\n"+ "帮你们都报工了，不用谢", atAll: true);
 
         // 重新安排下一次
         ScheduleNextRun();

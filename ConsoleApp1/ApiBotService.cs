@@ -17,6 +17,7 @@ public class ApiBotService
     private readonly TokenAccount _account;
     string Extranet = "http://www.js-leader.cn:48080";
     string Intranet = "http://192.168.104.191:48080";
+    public static List<string> SendToWecomList = new List<string>();
 
     public ApiBotService(TokenAccount account)
     {
@@ -37,19 +38,20 @@ public class ApiBotService
         int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
         if (hasReport == 1)
         {
-            await WecomNotifier.SendToWeCom($"[{_account.Username}] 今天已经报过工了，跳过本次报工");
+            SendToWecomList.Add($"[{_account.Username}] 今天已经报过工了，跳过本次报工");
             Console.WriteLine($"[{_account.Username}] 今天已经报过工了，跳过本次报工");
             return;
         }
         else if (hasReport == 3)
         {
+            await WecomNotifier.SendToWeCom($"[{_account.Username}] 报工失败,可能是账号未登录，请检查！", _account.Username);
             return;
         }
         // 获取项目列表，提取其中一个项目ID
         var getProject = await GetProjectIdAsync(client);
         if (getProject == null)
         {
-            await WecomNotifier.SendToWeCom($"[{_account.Username}] 未获取到任何项目，无法继续报工", _account.Username);
+            await WecomNotifier.SendToWeCom($"[{_account.Username}] 未获取到任何项目，无法继续报工，需要手动报工", _account.Username);
             return;
         }
 
@@ -87,7 +89,7 @@ public class ApiBotService
         if (justNow == 1)
         {
             Console.WriteLine($"[{_account.Username}] 报工完成！");
-            await WecomNotifier.SendToWeCom($"账号 {_account.Username} 报工完成 ✅");
+            SendToWecomList.Add($"[{_account.Username}] 报工完成！✅");
         }
         else
         {
@@ -116,7 +118,7 @@ public class ApiBotService
 
         if (content.Contains("未登录"))
         {
-            await WecomNotifier.SendToWeCom($"[{_account.Username}] 报工失败: 账号未登录", _account.Username);
+            Console.WriteLine($"[{_account.Username}] 检查报工失败: 未登录");
             return 3;
         }
         var root = doc.RootElement;
