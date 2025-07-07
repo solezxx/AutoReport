@@ -52,12 +52,12 @@ class Program
         ApiBotService.SendToWecomList.Add("开始报工");
         foreach (var account in accounts)
         {
-            Console.WriteLine($"开始执行账号：{account.UserName}");
+            Console.WriteLine($"开始执行账号：{account.ChineseName}");
             var bot = new ApiBotService(account);
             await bot.RunAsync();
         }
         Console.WriteLine("全部账号执行完毕。");
-        await WecomNotifier.SendToWeCom(string.Join("\n", ApiBotService.SendToWecomList)+"\n"+ "帮你们都报工了，不用谢", atAll: true);
+        await WecomNotifier.SendToWeCom(string.Join("\n", ApiBotService.SendToWecomList) + "\n" + "帮你们都报工了，不用谢", atAll: true);
 
         // 重新安排下一次
         ScheduleNextRun();

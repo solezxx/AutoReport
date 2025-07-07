@@ -5,7 +5,9 @@ public class TokenAccount
     /// 企业微信id
     /// </summary>
     public string WeComID { get; set; }
+    public string ChineseName { get; set; }
     public string UserName { get; set; }
+    public string PassWord { get; set; }
     public string BearerToken { get; set; }
     /// <summary>
     /// 报工系统内ID

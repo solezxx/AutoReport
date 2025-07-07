@@ -15,7 +15,13 @@ using ConsoleApp1;
 public class ApiBotService
 {
     private readonly TokenAccount _account;
+    /// <summary>
+    /// 外网
+    /// </summary>
     string Extranet = "http://www.js-leader.cn:48080";
+    /// <summary>
+    /// 内网
+    /// </summary>
     string Intranet = "http://192.168.104.191:48080";
     public static List<string> SendToWecomList = new List<string>();
 
@@ -35,23 +41,58 @@ public class ApiBotService
         client.DefaultRequestHeaders.Add("referer", $"{Intranet}/");
         client.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
 
+        var loginResult = await PostAsync(client, $"{Intranet}/admin-api/system/auth/login", new
+        {
+            tenantName = "管理员",
+            username = _account.UserName,
+            password = _account.PassWord,
+            rememberMe = false
+        });
+
+        if (loginResult != null)
+        {
+            if (loginResult.Contains("未登录"))
+            {
+                Console.WriteLine($"[{_account.ChineseName}] 登录失败: 未登录");
+                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 未登录", _account.WeComID);
+                return;
+            }
+            using var doc = JsonDocument.Parse(loginResult);
+            Console.WriteLine(loginResult);
+            var data = doc.RootElement.GetProperty("data");
+            _account.UserId = data.GetProperty("userId").GetInt32();
+            _account.BearerToken = data.GetProperty("accessToken").GetString();
+            _account.DeptId = data.GetProperty("deptId").GetInt32();
+            client.DefaultRequestHeaders.Remove("Authorization");
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_account.BearerToken}");
+        }
+        else
+        {
+            Console.WriteLine($"[{_account.ChineseName}] 登录失败: 无返回数据");
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 无返回数据", _account.WeComID);
+            return;
+        }
+
+        //// http://192.168.104.191:48080/admin-api/system/user/getOrg?id=635
+        //await GetAsync(client, $"{Intranet}/admin-api/system/user/getOrg?id={_account.UserId}");
+
         int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
         if (hasReport == 1)
         {
-            SendToWecomList.Add($"[{_account.UserName}] 今天已经报过工了，跳过本次报工");
-            Console.WriteLine($"[{_account.UserName}] 今天已经报过工了，跳过本次报工");
+            SendToWecomList.Add($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
+            Console.WriteLine($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
             return;
         }
         else if (hasReport == 3)
         {
-            await WecomNotifier.SendToWeCom($"[{_account.UserName}] 报工失败,可能是账号未登录，请检查！", _account.WeComID);
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工失败,可能是账号未登录，请检查！", _account.WeComID);
             return;
         }
         // 获取项目列表，提取其中一个项目ID
         var getProject = await GetProjectIdAsync(client);
         if (getProject == null)
         {
-            await WecomNotifier.SendToWeCom($"[{_account.UserName}] 未获取到任何项目，无法继续报工，需要手动报工", _account.WeComID);
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 未获取到任何项目，无法继续报工，需要手动报工", _account.WeComID);
             return;
         }
 
@@ -88,12 +129,12 @@ public class ApiBotService
         int justNow = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId);
         if (justNow == 1)
         {
-            Console.WriteLine($"[{_account.UserName}] 报工完成！");
-            SendToWecomList.Add($"[{_account.UserName}] 报工完成！✅");
+            Console.WriteLine($"[{_account.ChineseName}] 报工完成！");
+            SendToWecomList.Add($"[{_account.ChineseName}] 报工完成！✅");
         }
         else
         {
-            await WecomNotifier.SendToWeCom($"[{_account.UserName}] 报工完成，但未在5分钟内完成，可能存在问题。请检查！", _account.WeComID);
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工完成，但未在5分钟内完成，可能存在问题。请检查！", _account.WeComID);
         }
     }
     /// <summary>
@@ -110,7 +151,7 @@ public class ApiBotService
         var response = await client.GetAsync(url);
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"[{_account.UserName}] 检查报工失败: {response.StatusCode}");
+            Console.WriteLine($"[{_account.ChineseName}] 检查报工失败: {response.StatusCode}");
             return 3;
         }
         var content = await response.Content.ReadAsStringAsync();
@@ -118,21 +159,21 @@ public class ApiBotService
 
         if (content.Contains("未登录"))
         {
-            Console.WriteLine($"[{_account.UserName}] 检查报工失败: 未登录");
+            Console.WriteLine($"[{_account.ChineseName}] 检查报工失败: 未登录");
             return 3;
         }
         var root = doc.RootElement;
 
         if (!root.TryGetProperty("data", out var data) || !data.TryGetProperty("list", out var list) || list.GetArrayLength() == 0)
         {
-            Console.WriteLine($"[{_account.UserName}] 没有报工记录。");
+            Console.WriteLine($"[{_account.ChineseName}] 没有报工记录。");
             return 3;
         }
 
         var first = list[0];
         if (!first.TryGetProperty("reportTime", out var reportTimeProp))
         {
-            Console.WriteLine($"[{_account.UserName}] 报工记录中无reportTime字段。");
+            Console.WriteLine($"[{_account.ChineseName}] 报工记录中无reportTime字段。");
             return 3;
         }
 
@@ -141,7 +182,7 @@ public class ApiBotService
         var now = DateTimeOffset.Now;
 
         var diff = now - reportDateTime;
-        Console.WriteLine($"[{_account.UserName}] 最近报工时间: {reportDateTime:yyyy-MM-dd HH:mm:ss}，与当前时间相差 {diff.TotalMinutes:F1} 分钟");
+        Console.WriteLine($"[{_account.ChineseName}] 最近报工时间: {reportDateTime:yyyy-MM-dd HH:mm:ss}，与当前时间相差 {diff.TotalMinutes:F1} 分钟");
 
         return Math.Abs(diff.TotalMinutes) <= minutesThreshold ? 1 : 2;
     }
@@ -160,14 +201,14 @@ public class ApiBotService
 
         if (list.GetArrayLength() == 0)
         {
-            Console.WriteLine($"[{_account.UserName}] 未获取到任何项目ID，list为空。");
+            Console.WriteLine($"[{_account.ChineseName}] 未获取到任何项目ID，list为空。");
             return null;
         }
         //随机获取其中一个项目ID和任务ID
         int randomIndex = _random.Next(0, list.GetArrayLength());
         var firstProjectId = list[randomIndex].GetProperty("projectId").GetInt32();
         var id = list[randomIndex].GetProperty("id").GetInt64();
-        Console.WriteLine($"[{_account.UserName}] 获取的项目ID：{firstProjectId},任务ID：{id}");
+        Console.WriteLine($"[{_account.ChineseName}] 获取的项目ID：{firstProjectId},任务ID：{id}");
         return new Tuple<int, long>(firstProjectId, id);
     }
 
@@ -175,26 +216,28 @@ public class ApiBotService
     {
         var response = await client.GetAsync(url);
         var result = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"[{_account.UserName}] GET {url} -> 状态: {response.StatusCode}");
+        Console.WriteLine($"[{_account.ChineseName}] GET {url} -> 状态: {response.StatusCode}");
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"[{_account.UserName}] GET {url} -> 错误: {result}");
-            await WecomNotifier.SendToWeCom($"[{_account.UserName}] 获取数据失败: {result}", _account.WeComID);
+            Console.WriteLine($"[{_account.ChineseName}] GET {url} -> 错误: {result}");
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 获取数据失败: {result}", _account.WeComID);
         }
     }
 
-    private async Task PostAsync(HttpClient client, string url, object data)
+    private async Task<string> PostAsync(HttpClient client, string url, object data)
     {
         var json = JsonSerializer.Serialize(data);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         Console.WriteLine(json);
         var response = await client.PostAsync(url, content);
         var result = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"[{_account.UserName}] POST {url} -> 状态: {response.StatusCode}");
+        Console.WriteLine($"[{_account.ChineseName}] POST {url} -> 状态: {response.StatusCode}");
         if (!response.IsSuccessStatusCode)
         {
-            Console.WriteLine($"[{_account.UserName}] POST {url} -> 错误: {result}");
-            await WecomNotifier.SendToWeCom($"[{_account.UserName}] 报工失败: {result}", _account.WeComID);
+            Console.WriteLine($"[{_account.ChineseName}] POST {url} -> 错误: {result}");
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工失败: {result}", _account.WeComID);
         }
+
+        return result;
     }
 }
