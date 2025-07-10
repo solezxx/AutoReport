@@ -40,101 +40,105 @@ public class ApiBotService
         client.DefaultRequestHeaders.Add("origin", Intranet);
         client.DefaultRequestHeaders.Add("referer", $"{Intranet}/");
         client.DefaultRequestHeaders.Add("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-
-        var loginResult = await PostAsync(client, $"{Intranet}/admin-api/system/auth/login", new
+        try
         {
-            tenantName = "管理员",
-            username = _account.UserName,
-            password = _account.PassWord,
-            rememberMe = false
-        });
-
-        if (loginResult != null)
-        {
-            if (loginResult.Contains("未登录"))
+            var loginResult = await PostAsync(client, $"{Intranet}/admin-api/system/auth/login", new
             {
-                Console.WriteLine($"[{_account.ChineseName}] 登录失败: 未登录");
-                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 未登录", _account.WeComID);
+                tenantName = "管理员",
+                username = _account.UserName,
+                password = _account.PassWord,
+                rememberMe = false
+            });
+
+            if (loginResult != null)
+            {
+                if (loginResult.Contains("未登录"))
+                {
+                    Console.WriteLine($"[{_account.ChineseName}] 登录失败: 未登录");
+                    await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 未登录", _account.WeComID);
+                    return;
+                }
+                using var doc = JsonDocument.Parse(loginResult);
+                Console.WriteLine(loginResult);
+                var data = doc.RootElement.GetProperty("data");
+                _account.UserId = data.GetProperty("userId").GetInt32();
+                _account.BearerToken = data.GetProperty("accessToken").GetString();
+                _account.DeptId = data.GetProperty("deptId").GetInt32();
+                client.DefaultRequestHeaders.Remove("Authorization");
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_account.BearerToken}");
+            }
+            else
+            {
+                Console.WriteLine($"[{_account.ChineseName}] 登录失败: 无返回数据");
+                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 无返回数据", _account.WeComID);
                 return;
             }
-            using var doc = JsonDocument.Parse(loginResult);
-            Console.WriteLine(loginResult);
-            var data = doc.RootElement.GetProperty("data");
-            _account.UserId = data.GetProperty("userId").GetInt32();
-            _account.BearerToken = data.GetProperty("accessToken").GetString();
-            _account.DeptId = data.GetProperty("deptId").GetInt32();
-            client.DefaultRequestHeaders.Remove("Authorization");
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_account.BearerToken}");
-        }
-        else
-        {
-            Console.WriteLine($"[{_account.ChineseName}] 登录失败: 无返回数据");
-            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 登录失败: 无返回数据", _account.WeComID);
-            return;
-        }
 
-        //// http://192.168.104.191:48080/admin-api/system/user/getOrg?id=635
-        //await GetAsync(client, $"{Intranet}/admin-api/system/user/getOrg?id={_account.UserId}");
+            int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
+            if (hasReport == 1)
+            {
+                SendToWecomList.Add($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
+                Console.WriteLine($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
+                return;
+            }
+            else if (hasReport == 3)
+            {
+                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工失败，请检查！", _account.WeComID);
+                return;
+            }
+            // 获取项目列表，提取其中一个项目ID
+            var getProject = await GetProjectIdAsync(client);
+            if (getProject == null)
+            {
+                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 未获取到任何项目，无法继续报工，需要手动报工", _account.WeComID);
+                return;
+            }
 
-        int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
-        if (hasReport == 1)
-        {
-            SendToWecomList.Add($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
-            Console.WriteLine($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
-            return;
-        }
-        else if (hasReport == 3)
-        {
-            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工失败,可能是账号未登录，请检查！", _account.WeComID);
-            return;
-        }
-        // 获取项目列表，提取其中一个项目ID
-        var getProject = await GetProjectIdAsync(client);
-        if (getProject == null)
-        {
-            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 未获取到任何项目，无法继续报工，需要手动报工", _account.WeComID);
-            return;
-        }
+            // 进入报工页面
+            await GetAsync(client, $"{Intranet}/admin-api/project/manager/get?id={getProject.Item1}&isTemplate=1");
+            await GetAsync(client, $"{Intranet}/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=0");
 
-        // 进入报工页面
-        await GetAsync(client, $"{Intranet}/admin-api/project/manager/get?id={getProject.Item1}&isTemplate=1");
-        await GetAsync(client, $"{Intranet}/admin-api/cost/report_work/page?pageSize=50&pageNo=1&reportUser={_account.UserId}&projectId={getProject.Item1}&typeId=0");
+            // 提交工时为8小时
+            await PostAsync(client, $"{Intranet}/admin-api/cost/report_work/create", new ReportData()
+            {
+                workReportId = null,
+                reportType = "10",
+                typeId = 1563, // 软件调试
+                standardHours = null,
+                reportHour = 8, // 报工8小时
+                abnormalReportType = null,
+                remark = "<p><br></p>",
+                reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
+                totalHours = null,
+                reportUser = _account.UserId,
+                creator = _account.UserId.ToString(),
+                createTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
+                projectId = getProject.Item1, // 使用获取的项目ID
+                reportedHour = 0,
+                estimateHour = 0,
+                challengeName = null,
+                challengeId = new List<long>(),
+                machineTool = null,
+                gelId = null,
+                reportStatus = 50, // 状态为50表示已完成
+                taskId = getProject.Item2 // 使用获取的任务ID
+            });
 
-        // 提交工时为8小时
-        await PostAsync(client, $"{Intranet}/admin-api/cost/report_work/create", new ReportData()
-        {
-            workReportId = null,
-            reportType = "10",
-            typeId = 1563, // 软件调试
-            standardHours = null,
-            reportHour = 8, // 报工8小时
-            abnormalReportType = null,
-            remark = "<p><br></p>",
-            reportTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
-            totalHours = null,
-            reportUser = _account.UserId,
-            creator = _account.UserId.ToString(),
-            createTime = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"), // 使用UTC时间
-            projectId = getProject.Item1, // 使用获取的项目ID
-            reportedHour = 0,
-            estimateHour = 0,
-            challengeName = null,
-            challengeId = new List<long>(),
-            machineTool = null,
-            gelId = null,
-            reportStatus = 50, // 状态为50表示已完成
-            taskId = getProject.Item2 // 使用获取的任务ID
-        });
-
-        int justNow = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId);
-        if (justNow == 1)
-        {
-            Console.WriteLine($"[{_account.ChineseName}] 报工完成！");
-            SendToWecomList.Add($"[{_account.ChineseName}] 报工完成！✅");
+            int justNow = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId);
+            if (justNow == 1)
+            {
+                Console.WriteLine($"[{_account.ChineseName}] 报工完成！");
+                SendToWecomList.Add($"[{_account.ChineseName}] 报工完成！✅");
+            }
+            else
+            {
+                await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工完成，但未在5分钟内完成，可能存在问题。请检查！", _account.WeComID);
+            }
         }
-        else
+        catch (Exception e)
         {
-            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工完成，但未在5分钟内完成，可能存在问题。请检查！", _account.WeComID);
+            await WecomNotifier.SendToWeCom($"[{_account.ChineseName}] 报工过程中发生异常: {e.Message}", _account.WeComID);
+            Console.WriteLine($"[{_account.ChineseName}] 报工过程中发生异常: {e.Message}");
         }
     }
     /// <summary>

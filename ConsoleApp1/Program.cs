@@ -14,6 +14,24 @@ class Program
 
     static void Main(string[] args)
     {
+        Console.WriteLine("输入1 立即报工  输入2 倒计时报工");
+        var read = Console.ReadKey();
+        if (read.KeyChar == '1')
+        {
+            WecomNotifier.SendToWeCom("立即报工");
+            RunTask().Wait();
+            return;
+        }
+        else if (read.KeyChar == '2')
+        {
+            Console.WriteLine("倒计时报工");
+        }
+        else
+        {
+            Console.WriteLine("输入错误，默认立即报工");
+            RunTask().Wait();
+            return;
+        }
         ScheduleNextRun();
         Console.WriteLine("定时任务已启动，按任意键退出...");
         Console.ReadKey();
