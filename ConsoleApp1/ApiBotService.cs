@@ -74,7 +74,7 @@ public class ApiBotService
                 return;
             }
 
-            int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today).TotalMinutes);
+            int hasReport = await CheckReportWorkJustNowAsync(client, _account.DeptId, _account.UserId, (int)(DateTime.Now - DateTime.Today.AddHours(9)).TotalMinutes);
             if (hasReport == 1)
             {
                 SendToWecomList.Add($"[{_account.ChineseName}] 今天已经报过工了，跳过本次报工");
