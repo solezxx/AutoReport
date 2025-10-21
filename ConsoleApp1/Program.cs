@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 class Program
 {
     static Timer _timer;
-    static List<TimeSpan> _runTimes = new List<TimeSpan>
-    {
-        new TimeSpan(17, 20, 00)
-    };
+    // 定义时间段
+    static TimeSpan _startTime = new TimeSpan(17, 10, 0); // 起始时间
+    static TimeSpan _endTime = new TimeSpan(17, 30, 0);   // 结束时间
 
     static void Main(string[] args)
     {
@@ -39,23 +38,20 @@ class Program
     static void ScheduleNextRun()
     {
         var now = DateTime.Now;
-        DateTime? next = null;
-        foreach (var time in _runTimes)
+        // 生成区间内的随机时间
+        var random = new Random();
+        int totalSeconds = (int)(_endTime - _startTime).TotalSeconds;
+        int randomSeconds = random.Next(totalSeconds + 1);
+        var randomTime = _startTime.Add(TimeSpan.FromSeconds(randomSeconds));
+
+        var next = now.Date.Add(randomTime);
+        if (next <= now)
         {
-            var candidate = now.Date.Add(time);
-            if (candidate > now)
-            {
-                next = candidate;
-                break;
-            }
-        }
-        if (next == null)
-        {
-            // 今天都过了，安排到明天的第一个时间点
-            next = now.Date.AddDays(1).Add(_runTimes[0]);
+            // 如果今天的时间已过，安排到明天
+            next = now.Date.AddDays(1).Add(randomTime);
         }
 
-        var dueTime = next.Value - now;
+        var dueTime = next - now;
         _timer = new Timer(async _ => await RunTask(), null, dueTime, Timeout.InfiniteTimeSpan);
         Console.WriteLine($"下次执行时间: {next}");
         WecomNotifier.SendToWeCom($"下次执行报工时间: {next}").Wait();
