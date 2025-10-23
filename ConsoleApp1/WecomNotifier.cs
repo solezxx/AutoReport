@@ -19,7 +19,7 @@ public static class WecomNotifier
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         var response = await httpClient.PostAsync(
-            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=609ec019-5965-45e2-bd33-766a0db3b00c", content);
+            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=9089eae5-f94e-419f-bd27-5cf12adc250f", content);
 
         Console.WriteLine($"企业微信发送状态: {response.StatusCode}");
     }
@@ -37,7 +37,7 @@ public static class WecomNotifier
         };
         var json = JsonSerializer.Serialize(message);
         var response = await httpClient.PostAsync(
-            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=609ec019-5965-45e2-bd33-766a0db3b00c",
+            "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=9089eae5-f94e-419f-bd27-5cf12adc250f",
             new StringContent(json, Encoding.UTF8, "application/json"));
         Console.WriteLine($"企业微信发送状态: {response.StatusCode}");
     }
